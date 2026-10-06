@@ -96,7 +96,7 @@ Success: `{ "success": true, "data": ... }` · Failure: `{ "success": false, "er
 | `POST /v1/orders/{orderId}/cancel` | – | the cancelled order (only while it has no code) |
 
 - `domain`: `gmail.com` (default) or `icloud.com`. Existing integrations that never send it keep getting Gmail.
-- `quantity`: 1–50 inboxes per request (default 1). You are charged only for inboxes actually issued.
+- `quantity`: 1–200 inboxes per request (default 1; the cap is a site-wide setting and may differ per account). You are charged only for inboxes actually issued.
 - `status`: `waiting_code` → `completed` (first code arrived) or `cancelled` (by you, or automatically after 30 minutes with a refund).
 - Timestamps are Unix seconds. Prices are in VND.
 
@@ -109,7 +109,7 @@ Full reference with every field: <https://otpgmail.net/app/docs?utm_source=githu
 | `NO_MAILS_AVAILABLE`, `OUT_OF_STOCK` | 409/503 | No inbox in stock for that service + domain right now | No |
 | `DOMAIN_UNAVAILABLE` | 409 | iCloud is not offered for this service (or is temporarily off) – retry with `gmail.com` | No |
 | `INSUFFICIENT_BALANCE` | 402 | Top up first | No |
-| `QUANTITY_EXCEEDED` | 400 | More than 50 inboxes in one request | No |
+| `QUANTITY_EXCEEDED` | 400 | More than the per-request cap (200 by default) | No |
 | `VALIDATION_ERROR` | 400 | Bad body, e.g. an unknown `domain` | No |
 | `RATE_LIMITED` | 429 | Slow down and respect `Retry-After` | No |
 | `WAITING_LIMIT_REACHED` | 429 | Too many of your orders are still waiting for a code – cancel some or let them finish | No |
@@ -118,7 +118,7 @@ Full reference with every field: <https://otpgmail.net/app/docs?utm_source=githu
 ### Good practice
 
 - **Send an `Idempotency-Key` header** when creating orders. CI retries happen; with the key a retry returns the original order instead of renting a second inbox.
-- **Poll every 3–5 seconds.** Limits are 10 requests/second and 300/minute per key.
+- **Poll every 3–5 seconds.** By default a key allows 20 requests/second and 900/minute (the API docs page shows the limit that applies to your key).
 - **Cancel in your teardown** so failed runs are refunded immediately rather than after the 30-minute timeout.
 - **Fall back between domains.** iCloud is about 10% cheaper but shares one stock pool across services; when it is empty, Gmail usually is not.
 - **Set a User-Agent.** Python's built-in `urllib` sends `Python-urllib/3.x`, which the CDN rejects with HTTP 403. `requests`, `fetch`, `curl`, `HttpClient` and PHP cURL all work; the examples send `otpgmail-client/1.0`.
@@ -156,7 +156,7 @@ why every order without a code is refunded automatically. More than 70,000 inbox
 
 **The service I need is not listed.** Use the code `ot` ("any service") or request it from the rent page (**Thêm dịch vụ**); new services are added when the infrastructure supports them.
 
-**Can I buy in bulk?** Yes: `quantity` up to 50 per API request, or batch purchase (up to 200 inboxes, 24-hour hold) in the dashboard.
+**Can I buy in bulk?** Yes: `quantity` up to 200 per API request, or batch purchase (up to 200 inboxes, 24-hour hold) in the dashboard.
 
 **Gmail or iCloud?** Same behaviour and refund policy. iCloud is cheaper; Gmail has the deeper stock. Apple ID (`wx`) is Gmail-only.
 
